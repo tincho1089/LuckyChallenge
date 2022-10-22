@@ -1,0 +1,55 @@
+services:
+  db:
+    build: ./Db
+    ports:
+        - 1433:1433
+    extra_hosts:  
+    - "host.docker.internal:host-gateway"
+
+  server:
+    container_name: server
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    env_file:
+    - .env
+    command: npm run start:debug
+    ports:
+      - "${APP_PORT}:${APP_PORT}"
+      - "9229:9229"
+    depends_on:
+      - redis
+      - db
+    links:
+      - db
+
+  redis:
+    container_name: redis
+    hostname: redis
+    image: redis:latest
+    ports:
+     - "6379:6379"
+     - "8001:8001"
+    restart: always
+    volumes: 
+      - cache:/data
+
+  redis-commander:
+    container_name: redis-commander
+    hostname: redis-commander
+    image: rediscommander/redis-commander:latest
+    restart: always
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8088:8081"
+    depends_on:
+      - redis
+
+volumes:
+  cache:
+    driver: local
